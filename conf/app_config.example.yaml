@@ -1,0 +1,43 @@
+# 示例配置文件
+# 本地运行时请复制为 app_config.yaml 并填写实际值
+
+logging:
+  level: info
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# 数据库配置
+database:
+  host: localhost
+  port: 3306
+  user: root
+  password: your_password
+  database: your_database
+
+# Elasticsearch配置
+elasticsearch:
+  host: localhost
+  port: 9200
+  username: elastic
+  password: your_password
+
+# Qdrant配置
+qdrant:
+  host: localhost
+  port: 6333
+  api_key: your_api_key
+
+# 嵌入模型配置
+embedding:
+  model_path: docker/embedding/bge-large-zh-v1.5
+  batch_size: 32
+
+# API配置
+api:
+  host: 0.0.0.0
+  port: 8000
+  debug: false
+
+# 其他配置
+other:
+  timeout: 30
+  retry_count: 3
