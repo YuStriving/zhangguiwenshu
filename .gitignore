@@ -23,6 +23,9 @@ ENV/
 # Configuration files
 conf/app_config.yaml
 
+# Local configuration file (can be uploaded to Git)
+!conf/app_config_local.yaml
+
 # Logs
 logs/
 *.log
