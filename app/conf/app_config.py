@@ -155,5 +155,6 @@ schema = OmegaConf.structured(AppConfig)
 # 将加载的配置与schema合并，然后转换为AppConfig对象
 app_config: AppConfig = OmegaConf.to_object(OmegaConf.merge(schema, conf))
 
-# 打印日志级别以验证配置加载成功
-print(app_config.logging.file.level)
+# 使用logger记录配置加载状态
+from app.core.log import logger
+logger.debug(f"日志配置加载成功，文件日志级别: {app_config.logging.file.level}")

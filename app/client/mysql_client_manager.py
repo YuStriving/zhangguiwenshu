@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, create_async_engin
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import text
 from app.conf.app_config import DBConfig, app_config
+from app.core.log import logger
 
 
 class MySQLClientManager:
@@ -80,8 +81,10 @@ class MySQLClientManager:
         async with self.Session() as session:
             try:
                 yield session
+                # 如果事务没有出现问题，提交事务
                 await session.commit()
             except Exception as e:
+                # 如果事务出现问题，回滚事务
                 await session.rollback()
                 raise e
 
@@ -100,23 +103,23 @@ async def test():
     
     测试初始化客户端、创建表、插入数据、查询数据等操作。
     """
-    print("初始化MySQL客户端...")
+    logger.debug("初始化MySQL客户端...")
     await mysql_meta_client_manager.init()
-    print("MySQL客户端初始化成功")
+    logger.info("MySQL客户端初始化成功")
     
     try:
         # 测试数据
-        print("获取数据库会话...")
+        logger.debug("获取数据库会话...")
         async for session in mysql_meta_client_manager.get_session():
-            print("数据库会话获取成功")
+            logger.debug("数据库会话获取成功")
             
             # 测试连接
-            print("测试数据库连接...")
+            logger.debug("测试数据库连接...")
             result = await session.execute(text("SELECT 1"))
-            print(f"连接测试结果: {result.scalar()}")
+            logger.debug(f"连接测试结果: {result.scalar()}")
             
             # 测试创建表
-            print("创建测试表...")
+            logger.debug("创建测试表...")
             await session.execute(text("""
                 CREATE TABLE IF NOT EXISTS test_table (
                     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -124,10 +127,10 @@ async def test():
                     value INT NOT NULL
                 )
             """))
-            print("测试表创建成功")
+            logger.info("测试表创建成功")
             
             # 测试插入数据
-            print("插入测试数据...")
+            logger.debug("插入测试数据...")
             await session.execute(
                 text("INSERT INTO test_table (name, value) VALUES (:name, :value)"),
                 {"name": "测试数据1", "value": 100}
@@ -136,36 +139,38 @@ async def test():
                 text("INSERT INTO test_table (name, value) VALUES (:name, :value)"),
                 {"name": "测试数据2", "value": 200}
             )
-            print("测试数据插入成功")
+            logger.info("测试数据插入成功")
             
             # 测试查询数据
-            print("查询测试数据...")
+            logger.debug("查询测试数据...")
             result = await session.execute(text("SELECT * FROM test_table"))
             rows = result.all()
-            print(f"查询到 {len(rows)} 条数据")
+            logger.info(f"查询到 {len(rows)} 条数据")
+            # 只在debug级别显示具体数据
             for row in rows:
-                print(f"ID: {row.id}, Name: {row.name}, Value: {row.value}")
+                logger.debug(f"ID: {row.id}, Name: {row.name}, Value: {row.value}")
             
             # 测试使用fetchall方法
-            print("使用fetchall方法查询数据...")
+            logger.debug("使用fetchall方法查询数据...")
             result = await session.execute(text("SELECT * FROM test_table"))
             rows_fetchall = result.fetchall()
-            print(f"fetchall查询到 {len(rows_fetchall)} 条数据")
+            logger.info(f"fetchall查询到 {len(rows_fetchall)} 条数据")
+            # 只在debug级别显示具体数据
             for row in rows_fetchall:
-                print(f"ID: {row[0]}, Name: {row[1]}, Value: {row[2]}")
+                logger.debug(f"ID: {row[0]}, Name: {row[1]}, Value: {row[2]}")
             
             # 测试删除测试表
-            print("删除测试表...")
+            logger.debug("删除测试表...")
             await session.execute(text("DROP TABLE IF EXISTS test_table"))
-            print("测试表删除成功")
+            logger.info("测试表删除成功")
         
     except Exception as e:
-        print(f"测试过程中发生错误: {e}")
+        logger.error(f"测试过程中发生错误: {e}")
     finally:
         # 关闭客户端
-        print("关闭MySQL客户端...")
+        logger.debug("关闭MySQL客户端...")
         await mysql_meta_client_manager.close()
-        print("MySQL客户端关闭成功")
+        logger.info("MySQL客户端关闭成功")
 
 
 if __name__ == "__main__":

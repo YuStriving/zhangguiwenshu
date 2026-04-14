@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from typing import Optional, List, Dict, Any
 import aiohttp
 from app.conf.app_config import EmbeddingConfig, app_config
+from app.core.log import logger
 
 
 class EmbeddingClientManager:
@@ -90,9 +91,9 @@ async def test():
     
     测试初始化客户端、获取嵌入向量等操作。
     """
-    print("初始化嵌入服务客户端...")
+    logger.debug("初始化嵌入服务客户端...")
     await embedding_client_manager.init()
-    print("嵌入服务客户端初始化成功")
+    logger.info("嵌入服务客户端初始化成功")
     
     try:
         # 测试数据
@@ -103,22 +104,23 @@ async def test():
         ]
         
         # 获取嵌入向量
-        print("获取嵌入向量...")
+        logger.debug("获取嵌入向量...")
         embeddings = await embedding_client_manager.get_embeddings(test_texts)
-        print(f"获取到嵌入向量数量: {len(embeddings)}")
+        logger.info(f"获取到嵌入向量数量: {len(embeddings)}")
         
         # 打印嵌入向量信息
         for i, embedding in enumerate(embeddings):
-            print(f"文本 {i+1} 的嵌入向量维度: {len(embedding)}")
-            print(f"嵌入向量前5个值: {embedding[:5]}")
+            logger.info(f"文本 {i+1} 的嵌入向量维度: {len(embedding)}")
+            # 只在debug级别显示具体向量值
+            logger.debug(f"嵌入向量前5个值: {embedding[:5]}")
         
     except Exception as e:
-        print(f"测试过程中发生错误: {e}")
+        logger.error(f"测试过程中发生错误: {e}")
     finally:
         # 关闭客户端
-        print("关闭嵌入服务客户端...")
+        logger.debug("关闭嵌入服务客户端...")
         await embedding_client_manager.close()
-        print("嵌入服务客户端关闭成功")
+        logger.info("嵌入服务客户端关闭成功")
 
 
 if __name__ == "__main__":

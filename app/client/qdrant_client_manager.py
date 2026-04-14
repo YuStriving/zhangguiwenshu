@@ -12,6 +12,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '.
 from typing import Optional
 from qdrant_client import AsyncQdrantClient
 from app.conf.app_config import QdrantConfig, app_config
+from app.core.log import logger
 
 
 class QdrantClientManager:
@@ -54,6 +55,35 @@ class QdrantClientManager:
         if self.client:
             await self.client.close()
 
+    async def ensure_collection_exists(self, collection_name: str, vector_size: int = None, distance: str = "Cosine") -> None:
+        """确保集合存在，如果不存在则创建
+        
+        Args:
+            collection_name: 集合名称
+            vector_size: 向量维度大小，默认为配置中的embedding_size
+            distance: 距离度量方式，默认为Cosine
+        """
+        if vector_size is None:
+            vector_size = self.config.embedding_size
+        
+        # 检查集合是否存在
+        collections = await self.client.get_collections()
+        collection_names = [col.name for col in collections.collections]
+        
+        if collection_name not in collection_names:
+            logger.debug(f"创建集合: {collection_name}")
+            from qdrant_client.http.models import VectorParams
+            await self.client.create_collection(
+                collection_name=collection_name,
+                vectors_config=VectorParams(
+                    size=vector_size,
+                    distance=distance
+                )
+            )
+            logger.info(f"集合 {collection_name} 创建成功")
+        else:
+            logger.info(f"集合 {collection_name} 已存在")
+
 
 # 创建Qdrant客户端管理器实例
 # 使用应用配置中的Qdrant配置
@@ -67,34 +97,19 @@ async def test():
     """
     import numpy as np
     
-    print("初始化Qdrant客户端...")
+    logger.debug("初始化Qdrant客户端...")
     await qdrant_client_manager.init()
-    print("Qdrant客户端初始化成功")
+    logger.info("Qdrant客户端初始化成功")
     
     try:
         # 测试数据
         collection_name = "test_collection"
         
-        # 检查集合是否存在，如果不存在则创建
-        collections = await qdrant_client_manager.client.get_collections()
-        collection_names = [col.name for col in collections.collections]
-        
-        if collection_name not in collection_names:
-            print(f"创建集合: {collection_name}")
-            from qdrant_client.http.models import VectorParams
-            await qdrant_client_manager.client.create_collection(
-                collection_name=collection_name,
-                vectors_config=VectorParams(
-                    size=app_config.qdrant.embedding_size,
-                    distance="Cosine"
-                )
-            )
-            print(f"集合 {collection_name} 创建成功")
-        else:
-            print(f"集合 {collection_name} 已存在")
+        # 使用抽取的方法确保集合存在
+        await qdrant_client_manager.ensure_collection_exists(collection_name)
         
         # 生成测试向量数据
-        print("生成测试向量数据...")
+        logger.debug("生成测试向量数据...")
         vectors = np.random.rand(5, app_config.qdrant.embedding_size).tolist()
         payloads = [
             {"id": i, "name": f"item_{i}", "category": "test"}
@@ -102,7 +117,7 @@ async def test():
         ]
         
         # 添加向量数据
-        print("添加向量数据...")
+        logger.debug("添加向量数据...")
         await qdrant_client_manager.client.upsert(
             collection_name=collection_name,
             points=[
@@ -114,30 +129,31 @@ async def test():
                 for i in range(5)
             ]
         )
-        print("向量数据添加成功")
+        logger.info("向量数据添加成功")
         
         # 获取集合信息
-        print("获取集合信息...")
+        logger.debug("获取集合信息...")
         collection_info = await qdrant_client_manager.client.get_collection(collection_name=collection_name)
-        print(f"集合信息: {collection_info}")
+        logger.debug(f"集合信息: {collection_info}")
         
         # 测试获取点
-        print("测试获取点...")
+        logger.debug("测试获取点...")
         points = await qdrant_client_manager.client.retrieve(
             collection_name=collection_name,
             ids=[0, 1, 2]
         )
-        print("获取的点:")
+        logger.info(f"获取的点数量: {len(points)}")
+        # 只在debug级别显示具体数据
         for point in points:
-            print(f"ID={point.id}, 数据={point.payload}")
+            logger.debug(f"ID={point.id}, 数据={point.payload}")
         
     except Exception as e:
-        print(f"测试过程中发生错误: {e}")
+        logger.error(f"测试过程中发生错误: {e}")
     finally:
         # 关闭客户端
-        print("关闭Qdrant客户端...")
+        logger.debug("关闭Qdrant客户端...")
         await qdrant_client_manager.close()
-        print("Qdrant客户端关闭成功")
+        logger.info("Qdrant客户端关闭成功")
 
 
 if __name__ == "__main__":
