@@ -50,6 +50,7 @@ class LogManager:
                 rotation=self.config.file.rotation,
                 retention=self.config.file.retention,
                 encoding="utf-8",
+                format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name.replace('__main__', Path(sys.argv[0]).stem if sys.argv else 'unknown')}:{function}:{line} - {message}",
                 backtrace=True,
                 diagnose=True
             )
@@ -61,7 +62,7 @@ class LogManager:
                 sys.stdout,
                 level=self.config.console.level,
                 colorize=True,
-                format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+                format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name.replace('__main__', Path(sys.argv[0]).stem if sys.argv else 'unknown')}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
                 backtrace=True,
                 diagnose=True
             )
