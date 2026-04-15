@@ -13,6 +13,7 @@ from app.client.es_client_manager import es_client_manager  # 添加ES客户端�
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
+from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
 from app.service.meta_knowledge_service import MetaKnowledgeService
 from app.core.di import Container
 
@@ -40,7 +41,8 @@ async def build(config_path: Path):
                 dw_repository = DWMySQLRepository(dw_session)
                 column_qdrant_repository = ColumnQdrantRepository(qdrant_client_manager.client)
                 value_es_repository = ValueESRepository(es_client_manager.client)
-               
+                metric_qdrant_repository = MetricQdrantRepository(qdrant_client_manager.client)
+                
                
                 # 创建依赖注入容器并注册服务
                 container = Container()
@@ -49,6 +51,7 @@ async def build(config_path: Path):
                 container.register(ColumnQdrantRepository, column_qdrant_repository)
                 container.register(EmbeddingClientManager, embedding_client_manager) 
                 container.register(ValueESRepository, value_es_repository)
+                container.register(MetricQdrantRepository, metric_qdrant_repository)
                 
                 # 创建服务实例并执行构建
                 meta_service = MetaKnowledgeService(container)
@@ -68,7 +71,9 @@ async def build(config_path: Path):
 
 def main():
     """主函数"""
-    config_path = Path("conf/meta_config.yaml")
+    # 获取项目根目录
+    project_root = Path(__file__).parent.parent.parent
+    config_path = project_root / "conf" / "meta_config.yaml"
     asyncio.run(build(config_path))
 
 if __name__ == "__main__":
