@@ -31,8 +31,24 @@ async def filter_table(state: DataAgentState, runtime: Runtime[DataAgentContext]
     filtered_table_infos:list[TableInfoState] = []
     for table_info in table_infos:
         if table_info['name'] in result:
-            table_info['columns'] = [column_info for column_info in table_info['columns'] if column_info['name'] in result[table_info['name']]]
+            # 保留所有主外键字段（role 为 primary 或 foreign）
+            key_columns = [column_info for column_info in table_info['columns'] 
+                          if column_info.get('role') in ['primary', 'foreign']]
+            
+            # 保留 LLM 选择的相关字段
+            selected_columns = [column_info for column_info in table_info['columns'] 
+                               if column_info['name'] in result[table_info['name']]]
+            
+            # 合并主外键字段和选中字段（去重）
+            column_ids = set()
+            merged_columns = []
+            for col in key_columns + selected_columns:
+                if col['name'] not in column_ids:
+                    column_ids.add(col['name'])
+                    merged_columns.append(col)
+            
+            table_info['columns'] = merged_columns
             filtered_table_infos.append(table_info)
-    logger.info(f"过滤后的表信息数量: {len(filtered_table_infos)}")
+    logger.info(f"过滤后的表信息数量：{len(filtered_table_infos)}")
     return {"table_infos": filtered_table_infos}
     pass

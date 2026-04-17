@@ -140,16 +140,33 @@ async def merge_retrieved_info(state: DataAgentState, runtime: Runtime[DataAgent
             "total_columns": len(retrieved_column_info_map)
         }
     )
-    # 强制为每个表添加主外键字段信息
-    logger.debug("开始补充主外键字段信息")
+    # 强制为每个表添加主外键字段信息，并将其移到最前面
+    logger.info("开始补充主外键字段信息")
     for table_id in table_to_columns_map.keys():
         key_columns:list[ColumnInfo] = await meta_mysql_repository.get_key_columns_by_table_id(table_id)
-        column_ids = [column_info.id for column_info in table_to_columns_map[table_id]]
+        logger.info(f"表 {table_id} 的主外键字段数量：{len(key_columns)}")
+        for key_col in key_columns:
+            logger.info(f"  - {key_col.id}: {key_col.name} (role={key_col.role})")
+        
+        # 收集现有的字段 ID
+        existing_column_ids = [column_info.id for column_info in table_to_columns_map[table_id]]
+        logger.info(f"表 {table_id} 现有的字段数量：{len(existing_column_ids)}")
+        
+        # 收集需要添加的主外键字段
+        columns_to_prepend = []
         for key_column in key_columns:
-            if key_column.id not in column_ids:
-                table_to_columns_map[table_id].append(key_column)
+            if key_column.id not in existing_column_ids:
+                columns_to_prepend.append(key_column)
+                logger.info(f"  需要添加：{key_column.id}")
+        
+        # 将主外键字段添加到列表前面（确保 LLM 优先看到）
+        if columns_to_prepend:
+            table_to_columns_map[table_id] = columns_to_prepend + table_to_columns_map[table_id]
+            logger.info(f"表 {table_id} 添加了 {len(columns_to_prepend)} 个主外键字段")
+        else:
+            logger.info(f"表 {table_id} 无需添加主外键字段（已存在或无主外键）")
 
-    logger.debug(
+    logger.info(
             "主外键字段信息补充完成",
             extra={
                 "method": "merge_retrieved_info",
