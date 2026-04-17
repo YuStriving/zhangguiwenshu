@@ -22,13 +22,48 @@ from app.repositories.es.value_es_repository import ValueESRepository
 from app.core.di import Container
 
 class MetaKnowledgeService:
+    """元知识服务类
+    
+    负责元数据知识图谱的构建、同步和维护，支持多数据源集成。
+    
+    功能说明:
+        - 元数据配置文件的读取和解析
+        - 表信息、字段信息和指标信息的同步
+        - 向量化存储和全文检索支持
+        - 多数据源（MySQL、Qdrant、Elasticsearch）集成
+        
+    依赖组件:
+        - MetaMySQLRepository: MySQL元数据存储
+        - ColumnQdrantRepository: 字段向量存储
+        - MetricQdrantRepository: 指标向量存储
+        - ValueESRepository: 字段取值全文检索
+        - EmbeddingClientManager: 向量化服务
+        
+    使用场景:
+        - 元数据知识库初始化构建
+        - 数据智能体上下文准备
+        - 元数据变更同步
+    """
 
     def __init__(self, container: Container) -> None:
         """初始化元知识服务
         
+        通过依赖注入容器获取所有需要的仓储实例。
+        
         Args:
             container: 依赖注入容器，包含所有需要的仓储实例
+            
+        Raises:
+            KeyError: 如果容器中缺少必要的组件
         """
+        logger.info(
+            "初始化元知识服务",
+            extra={
+                "method": "__init__",
+                "container_type": type(container).__name__
+            }
+        )
+        
         self.container = container
         self.meta_mysql_repository: MetaMySQLRepository = container.get(MetaMySQLRepository)
         self.dw_mysql_repository: DWMySQLRepository = container.get(DWMySQLRepository)
@@ -36,6 +71,17 @@ class MetaKnowledgeService:
         self.embedding_client_manager: EmbeddingClientManager = container.get(EmbeddingClientManager)
         self.value_es_repository: ValueESRepository = container.get(ValueESRepository)
         self.metric_qdrant_repository: MetricQdrantRepository = container.get(MetricQdrantRepository)
+        
+        logger.info(
+            "元知识服务初始化完成",
+            extra={
+                "method": "__init__",
+                "components_loaded": [
+                    "MetaMySQLRepository", "DWMySQLRepository", "ColumnQdrantRepository",
+                    "EmbeddingClientManager", "ValueESRepository", "MetricQdrantRepository"
+                ]
+            }
+        )
     async def build(self, config_path: Path) -> None:
         """
         构建元数据。该方法会读取指定的配置文件，并根据配置同步表信息和指标信息。

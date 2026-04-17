@@ -10,6 +10,18 @@ class MetricInfo:
     """指标信息实体类
     
     用于在不同层之间传递指标信息数据，与SQLAlchemy ORM模型解耦。
+    
+    属性说明:
+        id (str): 指标唯一标识符
+        name (Optional[str]): 指标名称
+        description (Optional[str]): 指标描述信息
+        relevant_columns (Optional[List[str]]): 相关字段ID列表
+        alias (Optional[List[str]]): 指标别名列表
+    
+    使用场景:
+        - 向量数据库存储和检索
+        - 数据智能体状态管理
+        - 指标信息展示和查询
     """
     id: str
     name: Optional[str] = None

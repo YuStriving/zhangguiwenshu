@@ -34,8 +34,8 @@ async def build(config_path: Path):
         await qdrant_client_manager.init()
         await es_client_manager.init()
         # 直接获取Session，手动管理事务
-        async with mysql_meta_client_manager.Session() as meta_session:
-            async with mysql_dw_client_manager.Session() as dw_session:
+        async with mysql_meta_client_manager.get_session() as meta_session:
+            async with mysql_dw_client_manager.get_session() as dw_session:
                 # 创建存储库实例
                 meta_repository = MetaMySQLRepository(meta_session)
                 dw_repository = DWMySQLRepository(dw_session)
@@ -56,9 +56,6 @@ async def build(config_path: Path):
                 # 创建服务实例并执行构建
                 meta_service = MetaKnowledgeService(container)
                 await meta_service.build(config_path)
-                
-                # 手动提交事务
-                await meta_session.commit()
                 
     except Exception as e:
         print(f"构建元数据时发生错误: {e}")
