@@ -131,13 +131,13 @@ class MetaMySQLRepository:
             return None
     async def get_key_columns_by_table_id(self, table_id: str) -> List[ColumnInfo]:
         """
-        根据表ID获取主外键字段对象列表。
+        根据表 ID 获取主外键字段对象列表。
         Args:
-            table_id: TableInfo的唯一标识ID。
+            table_id: TableInfo 的唯一标识 ID。
         Returns:
             List[ColumnInfo]: 对应的主外键字段对象列表。
         """
-        sql = "SELECT * FROM column_info WHERE table_id = :table_id AND (role = 'primary' OR role = 'foreign')"
+        sql = "SELECT * FROM column_info WHERE table_id = :table_id AND (role LIKE '%primary%' OR role LIKE '%foreign%')"
         result = await self.session.execute(text(sql), {"table_id": table_id})
         return [ColumnInfo(**dict(row)) for row in result.mappings().fetchall()]
         

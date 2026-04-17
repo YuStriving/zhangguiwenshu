@@ -119,4 +119,17 @@ class DWMySQLRepository:
         version = result.scalar_one_or_none()
         dialect = self.session.bind.dialect.name
         return {"version": version, "dialect": dialect}
+    async def validate_sql(self, sql: str):
+        sql = f"explain {sql}"
+        await self.session.execute(text(sql))
+
+    
+    async def run_sql(self, sql: str):
+        # 移除 SQL 中的注释（LLM 生成的 SQL 可能包含注释）
+        import re
+        sql = re.sub(r'/\*.*?\*/', '', sql, flags=re.DOTALL)
+        sql = sql.strip()
         
+        result = await self.session.execute(text(sql))
+        rows = [dict(row._mapping) for row in result.fetchall()]
+        return rows
