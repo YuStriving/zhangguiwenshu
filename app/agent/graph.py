@@ -1,0 +1,108 @@
+import asyncio
+# 移除不必要的导入
+# from pdb import run
+import sys
+import os
+
+# 添加项目根目录到Python路径
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+
+# 导入必要的模块
+from langgraph.graph import StateGraph, START, END
+from app.client.qdrant_client_manager import qdrant_client_manager
+from app.client.es_client_manager import es_client_manager
+from app.client.embedding_client_manager import embedding_client_manager
+from app.client.mysql_client_manager import mysql_meta_client_manager
+from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
+from app.repositories.qdrant.column_qdrant_repository import ColumnQdrantRepository
+from app.repositories.qdrant.metric_qdrant_repository import MetricQdrantRepository
+from app.repositories.es.value_es_repository import ValueESRepository
+from app.agent.nodes.add_extra_context import add_extra_context
+from app.agent.nodes.correct_sql import correct_sql
+from app.agent.nodes.extract_keywords import extract_keywords
+from app.agent.nodes.filter_metric_info import filter_metric_info
+from app.agent.nodes.filter_table import filter_table
+from app.agent.nodes.generate_sql import generate_sql
+from app.agent.nodes.merge_retrieved_info import merge_retrieved_info
+from app.agent.nodes.recall_column import recall_column
+from app.agent.nodes.recall_metric import recall_metric
+from app.agent.nodes.recall_value import recall_value
+from app.agent.nodes.validate_sql import validate_sql
+from app.agent.nodes.run_sql import run_sql
+from app.agent.state import DataAgentState
+from app.agent.context import DataAgentContext
+from app.client.mysql_client_manager import mysql_dw_client_manager
+from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
+
+
+graph_builder = StateGraph(state_schema=DataAgentState, context_schema=DataAgentContext)
+graph_builder.add_node("extract_keywords", extract_keywords)
+graph_builder.add_node("recall_column", recall_column)
+graph_builder.add_node("recall_value", recall_value)
+graph_builder.add_node("recall_metric", recall_metric)
+graph_builder.add_node("merge_retrieved_info", merge_retrieved_info)
+graph_builder.add_node("filter_metric_info", filter_metric_info)
+graph_builder.add_node("filter_table", filter_table)
+graph_builder.add_node("add_extra_context", add_extra_context)
+graph_builder.add_node("generate_sql", generate_sql)
+graph_builder.add_node("validate_sql", validate_sql)
+graph_builder.add_node("correct_sql", correct_sql)
+graph_builder.add_node("run_sql", run_sql)
+
+graph_builder.add_edge(START, "extract_keywords")
+graph_builder.add_edge("extract_keywords", "recall_column")
+graph_builder.add_edge("extract_keywords", "recall_value")
+graph_builder.add_edge("extract_keywords", "recall_metric")
+graph_builder.add_edge("recall_column", "merge_retrieved_info")
+graph_builder.add_edge("recall_value", "merge_retrieved_info")
+graph_builder.add_edge("recall_metric", "merge_retrieved_info")
+graph_builder.add_edge("merge_retrieved_info", "filter_metric_info")
+graph_builder.add_edge("filter_metric_info", "filter_table")
+graph_builder.add_edge("filter_table", "add_extra_context")
+graph_builder.add_edge("add_extra_context", "generate_sql")
+graph_builder.add_edge("generate_sql", "validate_sql")
+graph_builder.add_conditional_edges(
+    source="validate_sql",
+    path=lambda state: "run_sql" if state.get('error') is None else "correct_sql",
+    path_map={"run_sql": "run_sql", "correct_sql": "correct_sql"}
+)
+graph_builder.add_edge("correct_sql", "run_sql")
+graph_builder.add_edge("run_sql", END)
+graph = graph_builder.compile()
+
+if __name__ == "__main__":
+    # print(graph.get_graph().draw_mermaid())
+    async def text():
+        await qdrant_client_manager.init()
+        await es_client_manager.init()
+        await embedding_client_manager.init()
+        await mysql_meta_client_manager.init()
+        await mysql_dw_client_manager.init()  
+        async for meta_session in mysql_meta_client_manager.get_session():
+            async for dw_session in mysql_dw_client_manager.get_session():
+                meta_mysql_repository = MetaMySQLRepository(meta_session)
+                dw_mysql_repository = DWMySQLRepository(dw_session)
+                qdrant_column_repository = ColumnQdrantRepository(qdrant_client_manager.client)
+                qdrant_metric_repository = MetricQdrantRepository(qdrant_client_manager.client)
+                value_es_repository = ValueESRepository(es_client_manager.client)
+                await embedding_client_manager.init()
+                state = DataAgentState(query="统计华北地区的销售总额")
+                context = DataAgentContext(
+                    column_qdrant_repository=qdrant_column_repository,
+                    embedding_client_manager=embedding_client_manager,
+                    metric_qdrant_repository=qdrant_metric_repository,
+                    value_es_repository=value_es_repository,
+                    meta_mysql_repository=meta_mysql_repository,
+                    dw_mysql_repository=dw_mysql_repository  
+                    )
+                async for chunk in graph.astream(input=state, context=context):
+                    print(chunk)
+                await qdrant_client_manager.close()
+
+    asyncio.run(text())
+
+
+
+
+
+
