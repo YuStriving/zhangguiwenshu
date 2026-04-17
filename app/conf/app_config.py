@@ -39,15 +39,37 @@ class Console:
     level: str
 
 @dataclass
+class ProgramLoggingConfig:
+    """程序模块日志配置类
+    
+    属性:
+        enable: bool - 是否启用程序模块日志
+        level: str - 日志级别 (DEBUG, INFO, WARNING, ERROR, CRITICAL)
+        base_path: str - 基础日志路径
+        program_name: str - 程序模块名称
+        rotation: str - 日志文件轮转策略
+        retention: str - 日志文件保留策略
+    """
+    enable: bool
+    level: str
+    base_path: str = "logs"
+    program_name: str = "app"
+    rotation: str = "1 day"
+    retention: str = "30 days"
+
+
+@dataclass
 class LoggingConfig:
     """日志配置类
     
     属性:
         file: File - 文件日志配置
         console: Console - 控制台日志配置
+        program_logging: ProgramLoggingConfig - 程序模块日志配置
     """
     file: File
     console: Console
+    program_logging: ProgramLoggingConfig
 
 # 数据库配置
 @dataclass
