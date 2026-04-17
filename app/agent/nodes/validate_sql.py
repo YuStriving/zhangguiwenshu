@@ -13,15 +13,25 @@ from langgraph.runtime import Runtime
 
 async def validate_sql(state: DataAgentState, runtime: Runtime[DataAgentContext]):
     write = runtime.stream_writer
-    write("开始验证SQL语句")
-    sql = state["sql"]
-    dw_mysql_repository = runtime.context["dw_mysql_repository"]
+    write({"type":"progress","step":"验证SQL语句","status":"running"})
+    
     try:
-        await dw_mysql_repository.validate_sql(sql)
-        logger.info("SQL语句验证成功")
-        return {"error":None}
+        sql = state["sql"]
+        dw_mysql_repository = runtime.context["dw_mysql_repository"]
+        try:
+            await dw_mysql_repository.validate_sql(sql)
+            logger.info("SQL语句验证成功")
+            
+            write({"type":"progress","step":"验证SQL语句","status":"success"})
+            return {"error":None}
+        except Exception as e:
+            logger.error(e)
+            
+            write({"type":"progress","step":"验证SQL语句","status":"error"})
+            write({"type":"error", "message": str(e)})
+            return {"error":str(e)}
     except Exception as e:
-        logger.error(e)
-        return {"error":str(e)}
-
-    pass
+        logger.error(f"验证SQL语句过程中出错: {e}")
+        write({"type":"progress","step":"验证SQL语句","status":"error"})
+        write({"type":"error", "message": str(e)})
+        raise

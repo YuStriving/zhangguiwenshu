@@ -16,20 +16,28 @@ from app.core.log import logger
 
 async def filter_metric_info(state: DataAgentState, runtime: Runtime[DataAgentContext]):
     write = runtime.stream_writer
-    write("开始指标信息过滤")
-    metric_infos = state['metric_infos']
-    query = state['query']
-    prompt = PromptTemplate(
-        template = load_prompt("filter_metric_info"),
-        input_variables = ["query", "metric_infos"],
-    )
-    output_parser = JsonOutputParser()
-    chain = prompt | llm | output_parser
-    result = await chain.ainvoke({"query": query, "metric_infos": yaml.dump(metric_infos,encoding="utf-8",allow_unicode=True,sort_keys=False)})
-    filtered_metric_infos:list[MetricInfoState] = []
-    for metric_info in metric_infos:
-        if metric_info['name'] in result:
-            filtered_metric_infos.append(metric_info)
-    logger.info(f"过滤后的指标信息数量: {len(filtered_metric_infos)}")
-    return {"metric_infos": filtered_metric_infos}
-    pass
+    write({"type":"progress","step":"指标信息过滤","status":"running"})
+    
+    try:
+        metric_infos = state['metric_infos']
+        query = state['query']
+        prompt = PromptTemplate(
+            template = load_prompt("filter_metric_info"),
+            input_variables = ["query", "metric_infos"],
+        )
+        output_parser = JsonOutputParser()
+        chain = prompt | llm | output_parser
+        result = await chain.ainvoke({"query": query, "metric_infos": yaml.dump(metric_infos,encoding="utf-8",allow_unicode=True,sort_keys=False)})
+        filtered_metric_infos:list[MetricInfoState] = []
+        for metric_info in metric_infos:
+            if metric_info['name'] in result:
+                filtered_metric_infos.append(metric_info)
+        logger.info(f"过滤后的指标信息数量: {len(filtered_metric_infos)}")
+        
+        write({"type":"progress","step":"指标信息过滤","status":"success"})
+        return {"metric_infos": filtered_metric_infos}
+    except Exception as e:
+        logger.error(f"指标信息过滤过程中出错: {e}")
+        write({"type":"progress","step":"指标信息过滤","status":"error"})
+        write({"type":"error", "message": str(e)})
+        raise

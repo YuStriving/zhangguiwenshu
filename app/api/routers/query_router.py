@@ -1,10 +1,11 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from starlette.responses import StreamingResponse
 
 from app.api.schemas.query_schema import QuerySchema
 from app.core.di import Container
 from app.core.service_registry import ServiceRegistry
+from app.core.log import set_request_id, get_request_id, logger
 from app.service.query_service import QueryService
 
 
@@ -32,18 +33,24 @@ async def get_query_service() -> QueryService:
 
 @query_router.post("/api/query")
 async def query_handler(
+    request: Request,
     query: QuerySchema,
     query_service: Annotated[QueryService, Depends(get_query_service)]
 ):
     """处理查询请求
     
     Args:
+        request: FastAPI 请求对象
         query: 查询参数
         query_service: 查询服务实例
         
     Returns:
         StreamingResponse: 流式响应
     """
+    # 设置请求 ID
+    request_id = set_request_id()
+    logger.info(f"收到查询请求，request_id: {request_id}, query: {query.query}")
+    
     return StreamingResponse(
         query_service.query(query.query),
         media_type="text/event-stream"

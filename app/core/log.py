@@ -6,12 +6,38 @@
 import sys
 import os
 from pathlib import Path
+import contextvars
+import uuid
 
 # 添加项目根目录到 Python 路径
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
 from loguru import logger
 from app.conf.app_config import LoggingConfig, app_config
+
+# 请求 ID 上下文变量
+request_id_context_var = contextvars.ContextVar('request_id', default='')
+
+
+def set_request_id(request_id: str = None):
+    """设置请求 ID
+    
+    参数:
+        request_id: str - 请求 ID，如果不提供则自动生成
+    """
+    if request_id is None:
+        request_id = str(uuid.uuid4())
+    request_id_context_var.set(request_id)
+    return request_id
+
+
+def get_request_id() -> str:
+    """获取当前请求 ID
+    
+    返回:
+        str - 当前请求 ID
+    """
+    return request_id_context_var.get()
 
 
 class LogManager:
@@ -104,6 +130,38 @@ class LogManager:
         program_path.mkdir(exist_ok=True, parents=True)
         return program_path
     
+    def _format_log(self, record):
+        """格式化日志记录
+        
+        参数:
+            record: dict - 日志记录
+            
+        返回:
+            str - 格式化后的日志字符串
+        """
+        request_id = request_id_context_var.get()
+        if request_id:
+            request_id_str = f"[{request_id}] | "
+        else:
+            request_id_str = ""
+        return "{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | " + request_id_str + "{name}:{function}:{line} - {message}\n"
+    
+    def _format_log_colorized(self, record):
+        """格式化日志记录（带颜色）
+        
+        参数:
+            record: dict - 日志记录
+            
+        返回:
+            str - 格式化后的日志字符串
+        """
+        request_id = request_id_context_var.get()
+        if request_id:
+            request_id_str = f"[{request_id}] | "
+        else:
+            request_id_str = ""
+        return "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | " + request_id_str + "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>\n"
+    
     def _setup_logger(self):
         """设置日志配置
         
@@ -125,7 +183,7 @@ class LogManager:
                 rotation=self.config.file.rotation,
                 retention=self.config.file.retention,
                 encoding="utf-8",
-                format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+                format=self._format_log,
                 backtrace=True,
                 diagnose=True
             )
@@ -137,7 +195,7 @@ class LogManager:
                 sys.stdout,
                 level=self.config.console.level,
                 colorize=True,
-                format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
+                format=self._format_log_colorized,
                 backtrace=True,
                 diagnose=True
             )
@@ -175,10 +233,10 @@ class LogManager:
                 rotation=self.config.program_logging.rotation,
                 retention=self.config.program_logging.retention,
                 encoding="utf-8",
-                format="{time:YYYY-MM-DD HH:mm:ss.SSS} | {level: <8} | {name}:{function}:{line} - {message}",
+                format=self._format_log,
                 backtrace=True,
                 diagnose=True,
-                filter=filter_func
+                filter=lambda record, service=service_type: filter_func(record)
             )
     
     def get_logger(self):
@@ -207,8 +265,23 @@ if __name__ == "__main__":
     logger.error("这是一个 error 级别的日志")
     logger.critical("这是一个 critical 级别的日志")
     
+    # 测试请求 ID
+    print("\n" + "=" * 60)
+    print("测试请求 ID 功能")
+    print("=" * 60)
+    
+    request_id = set_request_id()
+    print(f"设置请求 ID: {request_id}")
+    
+    logger.info("这是带有请求 ID 的日志 - 第1条")
+    logger.info("这是带有请求 ID 的日志 - 第2条")
+    
     # 测试异常日志
+    print("\n" + "=" * 60)
+    print("测试异常日志")
+    print("=" * 60)
+    
     try:
         1 / 0
     except Exception as e:
-        logger.exception("发生异常:")
+        logger.exception("发生异常")

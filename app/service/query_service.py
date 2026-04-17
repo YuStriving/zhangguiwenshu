@@ -1,8 +1,11 @@
+import json
+
 from app.agent.context import DataAgentContext
 from app.agent.graph import graph
 from app.agent.state import DataAgentState
 from app.client.embedding_client_manager import EmbeddingClientManager
 from app.client.qdrant_client_manager import qdrant_client_manager
+from app.core.log import logger
 from app.repositories.es.value_es_repository import ValueESRepository
 from app.repositories.mysql.dw.dw_mysql_repository import DWMySQLRepository
 from app.repositories.mysql.meta.meta_mysql_repository import MetaMySQLRepository
@@ -60,11 +63,17 @@ class QueryService:
             meta_mysql_repository=self.meta_repository,
             dw_mysql_repository=self.dw_repository
         )
-        
-        async for chunk in graph.astream(
-            input=state, 
-            context=context, 
-            stream_mode="custom"
-        ):
-            yield f"data: {chunk}\n\n"
-        await qdrant_client_manager.close()
+        try:
+            async for chunk in graph.astream(
+                input=state, 
+                context=context, 
+                stream_mode="custom"
+            ):
+                yield f"data: {json.dumps(chunk,ensure_ascii=False,default=str)}\n\n"
+            await qdrant_client_manager.close()
+        except Exception as e:
+            logger.error(f"查询过程中出错: {e}")
+            error = {"type":"error", "message": str(e)}
+            yield f"data: {json.dumps(error,ensure_ascii=False,default=str)}\n\n"
+            await qdrant_client_manager.close()
+            raise e
