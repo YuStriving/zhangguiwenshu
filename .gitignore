@@ -54,3 +54,6 @@ docker-compose.override.yaml
 .cache/
 tmp/
 temp/
+
+# logs日志不进行上传到 Git
+logs/
