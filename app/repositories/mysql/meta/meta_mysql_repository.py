@@ -1,6 +1,6 @@
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, text
 from app.entities import ColumnInfo, TableInfo, MetricInfo, ColumnMetric
 from app.models.meta_table import MetaTable
 from app.models.meta_column import MetaColumn
@@ -102,5 +102,51 @@ class MetaMySQLRepository:
             # 注意：不需要commit，因为会话由外部管理
         except Exception as e:
             raise e
+    async def get_column_by_id(self, column_id: str) -> Optional[ColumnInfo]:
+        """
+        根据ID获取单个ColumnInfo对象。
+        Args:
+            column_id: ColumnInfo的唯一标识ID。
+        Returns:
+            Optional[ColumnInfo]: 对应的ColumnInfo对象，如果不存在则返回None。
+        """
+        column_info:MetaColumn | None = await self.session.get(MetaColumn,column_id)
+
+        if column_info:
+            return ColumnInfoMapper.to_entity(column_info)
+        else:
+            return None
+    async def get_table_by_id(self, table_id: str) -> Optional[TableInfo]:
+        """
+        根据ID获取单个TableInfo对象。
+        Args:
+            table_id: TableInfo的唯一标识ID。
+        Returns:
+            Optional[TableInfo]: 对应的TableInfo对象，如果不存在则返回None。
+        """
+        table_info:MetaTable | None = await self.session.get(MetaTable,table_id)
+        if table_info:
+            return TableInfoMapper.to_entity(table_info)
+        else:
+            return None
+    async def get_key_columns_by_table_id(self, table_id: str) -> List[ColumnInfo]:
+        """
+        根据表ID获取主外键字段对象列表。
+        Args:
+            table_id: TableInfo的唯一标识ID。
+        Returns:
+            List[ColumnInfo]: 对应的主外键字段对象列表。
+        """
+        sql = "SELECT * FROM column_info WHERE table_id = :table_id AND (role = 'primary' OR role = 'foreign')"
+        result = await self.session.execute(text(sql), {"table_id": table_id})
+        return [ColumnInfo(**dict(row)) for row in result.mappings().fetchall()]
+        
+            
+           
+
+
+
+
+       
 
 

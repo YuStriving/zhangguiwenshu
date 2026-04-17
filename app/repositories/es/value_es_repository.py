@@ -97,6 +97,31 @@ class ValueESRepository:
             total_inserted += inserted
         
         return total_inserted
+    async def search(self, keyword: str, score_threshold: float = 0.6, limit: int = 20) -> List['ValueInfo']:
+        """搜索值数据
+        
+        Args:
+            keyword: 查询条件
+            score_threshold: 分数阈值
+            limit: 最大返回数量
+            
+        Returns:
+            List[ValueInfo]: 搜索结果列表
+        """
+        response = await self.es_client.search(
+            index=self.index_name, 
+            query={
+            "match": {
+                "value": {
+                    "query": keyword,
+                    "minimum_should_match": "75%"
+                }
+            }
+        }, 
+        size=limit,
+        min_score=score_threshold,
+        )
+        return [ValueInfo(**hit['_source']) for hit in response['hits']['hits']]
 
 
 

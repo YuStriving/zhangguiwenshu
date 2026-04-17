@@ -1,8 +1,8 @@
 from dataclasses import asdict
 from typing import TYPE_CHECKING
+from app.entities.table_info import TableInfo
 
 if TYPE_CHECKING:
-    from app.entities.table_info import TableInfo
     from app.models.meta_table import MetaTable
 
 

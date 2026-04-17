@@ -3,6 +3,9 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
+# 导入 DateInfoState
+from app.agent.state import DateInfoState
+
 class DWMySQLRepository:
     """
     数据仓库 MySQL 存储库。
@@ -107,3 +110,13 @@ class DWMySQLRepository:
                     "examples": examples
                 }
         return column_details
+    async def get_db_info(self):
+        """
+        从数据仓库中获取数据库信息。
+        """
+        sql = "select version()"
+        result = await self.session.execute(text(sql))
+        version = result.scalar_one_or_none()
+        dialect = self.session.bind.dialect.name
+        return {"version": version, "dialect": dialect}
+        
