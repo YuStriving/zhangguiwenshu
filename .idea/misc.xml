@@ -3,5 +3,7 @@
   <component name="Black">
     <option name="sdkName" value="uv (zhangguiwenshu)" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="uv (zhangguiwenshu)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.13 (.venv)" project-jdk-type="Python SDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
 </project>

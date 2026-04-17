@@ -77,7 +77,8 @@ if __name__ == "__main__":
         await es_client_manager.init()
         await embedding_client_manager.init()
         await mysql_meta_client_manager.init()
-        await mysql_dw_client_manager.init()  
+        await mysql_dw_client_manager.init() 
+        await embedding_client_manager.init() 
         async for meta_session in mysql_meta_client_manager.get_session():
             async for dw_session in mysql_dw_client_manager.get_session():
                 meta_mysql_repository = MetaMySQLRepository(meta_session)
@@ -85,7 +86,7 @@ if __name__ == "__main__":
                 qdrant_column_repository = ColumnQdrantRepository(qdrant_client_manager.client)
                 qdrant_metric_repository = MetricQdrantRepository(qdrant_client_manager.client)
                 value_es_repository = ValueESRepository(es_client_manager.client)
-                await embedding_client_manager.init()
+                
                 state = DataAgentState(query="统计华北地区的销售总额")
                 context = DataAgentContext(
                     column_qdrant_repository=qdrant_column_repository,
